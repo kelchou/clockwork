@@ -70,5 +70,36 @@ describe Clockwork::Event do
         assert_equal true, event.run_now?(Time.now)
       end
     end
+
+    describe 'with Pacific Time TZ' do
+      before do
+        @manager = Class.new
+        @manager.stubs(:config).returns({ :tz => 'America/Los_Angeles' })
+      end
+
+      describe 'event non DST to DST transition' do
+        it 'returns true when it crosses the transition' do
+          event = Clockwork::Event.new(@manager, 1.day, nil, nil)
+          starting_time = Time.utc(2022, 3, 13, 6)
+          assert_equal true, event.run_now?(starting_time)
+          event.instance_variable_set('@last', starting_time)
+          # This will return true, since the UTC offset is moved forward by 1 hour. With the 1 hour, it will be
+          # equal to 1 day since the last time it was run.
+          assert_equal true, event.run_now?(starting_time + 23.hours)
+        end
+      end
+
+      describe 'event DST to non DST transition' do
+        it 'returns true when it crosses the transition' do
+          event = Clockwork::Event.new(@manager, 1.day, nil, nil)
+          starting_time = Time.utc(2021, 11, 7, 5)
+          assert_equal true, event.run_now?(starting_time)
+          event.instance_variable_set('@last', starting_time)
+          # This returns false since it hasn't reached a full 'real' day yet.
+          assert_equal false, event.run_now?(starting_time + 24.hours)
+          assert_equal true, event.run_now?(starting_time + 25.hours)
+        end
+      end
+    end
   end
 end

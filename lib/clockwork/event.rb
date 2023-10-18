@@ -71,7 +71,15 @@ module Clockwork
     end
 
     def elapsed_ready?(t)
-      @last.nil? || (t - @last.to_i).to_i >= @period
+      # We only need to calculate this if the period is >= 1 day. The UTC offset check only makes sense
+      # for periods >= 1.day since these are the shortest period where increasing the date by a day, may not
+      # exactly match the exact elapsed time.
+      change_in_utc_offset = if @period >= 1.day
+        t.utc_offset - (t - @period).utc_offset
+      else
+        0
+      end
+      @last.nil? || (t - @last.to_i).to_i >= (@period - change_in_utc_offset)
     end
 
     def run_at?(t)
